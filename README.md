@@ -56,19 +56,16 @@ This project implements a message transmission system with three threads: two fo
             uint16_t MessageSize; // Size of the message
             uint64_t MessageId;   // Unique identifier for the message
             uint64_t MessageData; // Data payload
-        } Message;
+            } Message;
         The MessageSize field is set to sizeof(Message), and MessageId and MessageData are used for identification and filtering.
         Messages are converted to network byte order (htons, htonll) before sending and back to host byte order (ntohs, ntohll) after receiving to ensure portability across different architectures.
         htonll (and similarly ntohll) are not standard POSIX functions. While htonl and ntohs are standard for 32-bit and 16-bit conversions, respectively, there is no standard htonll or ntohll for 64-bit values in POSIX. Some systems provide these functions as extensions (e.g., glibc on Linux), but they are not guaranteed to be available. In the project, htonll and ntohll are used to convert 64-bit fields (MessageId and MessageData in the Message struct) between host and network byte order. Since these functions are not standard, so was implemented custom_covectors.h file with the correct version of htonll (and similarly ntohll) to ensure portability and eliminate the warning.
     Technique:
-
-    The struct is packed to ensure consistent size and alignment across platforms.
-    Network byte order conversion ensures that the message format is correctly interpreted regardless of the endianness of the system.
-
+        The struct is packed to ensure consistent size and alignment across platforms.
+        Network byte order conversion ensures that the message format is correctly interpreted regardless of the endianness of the system.
     Why It Works:
-
-    The fixed-size struct ensures that messages are consistently serialized and deserialized, making communication reliable.
-    The use of uint16_t and uint64_t provides well-defined sizes for the fields, avoiding ambiguity.
+        The fixed-size struct ensures that messages are consistently serialized and deserialized, making communication reliable.
+        The use of uint16_t and uint64_t provides well-defined sizes for the fields, avoiding ambiguity.
 
 3. Message Storage with Search by MessageId
 
@@ -125,15 +122,13 @@ This project implements a message transmission system with three threads: two fo
         The project has been tested on a Linux environment.
 
 7. CMake Build System
-    The build process generates three executables: main, tcp_receiver, and udp_sender.
 
+    Implementation:
+        The build process generates three executables: main, tcp_receiver, and udp_sender.
     Technique:
-
-    CMake is used to manage the build, specifying the C11 standard and including all necessary files.
-
+        CMake is used to manage the build, specifying the C11 standard and including all necessary files.
     Why It Works:
-
-    CMake is a cross-platform build system widely used for C projects, making it easy to build the project on Linux.
+        CMake is a cross-platform build system widely used for C projects, making it easy to build the project on Linux.
 
 8. Thread-Safe Access to the Message Container
 
@@ -145,17 +140,12 @@ This project implements a message transmission system with three threads: two fo
                 hash_map_insert(messageStore, msg.MessageId, msg);
                 // Process the message
             }
-            mutex_unlock(&mtxStore);
-        
+            mutex_unlock(&mtxStore);        
         The transmitQueue is also shared between the receiving threads and the transmitting thread, protected by another mutex (mtxQueue).
-
     Technique:
-
         POSIX mutexes (pthread_mutex_t) are used for synchronization, wrapped in thread_utils.h functions (mutex_lock, mutex_unlock).
         A condition variable (cv) is used to signal the transmitterThread when new messages are added to the transmitQueue.
-
     Why It Works:
-
         The mutex ensures that only one thread can access the hash map or queue at a time, preventing data races.
         The condition variable allows the transmitterThread to wait efficiently for new messages, reducing CPU usage compared to busy-waiting.
 
@@ -176,26 +166,19 @@ This project implements a message transmission system with three threads: two fo
         It also mirrors a real-world scenario where the sender and receiver might be on different machines.
 
 10. Non-Blocking Sockets
+
     Implementation:
-
-    All sockets (UDP and TCP) are set to non-blocking mode using fcntl:
-
-        fcntl(sock, F_SETFL, O_NONBLOCK);
-
-    In receiverThread, transmitterThread, and tcp_receiver.c, the select system call is used to wait for socket events (e.g., data available to read, socket ready to write):
-
-        FD_ZERO(&read_fds);
-        FD_SET(sock, &read_fds);
-        struct timeval tv = {0, 10000}; // 10ms timeout
-        int ready = select(sock + 1, &read_fds, NULL, NULL, &tv);
-
-        Technique:
-
-            select allows the program to wait for multiple socket events efficiently, avoiding busy-waiting.
-            A short timeout (10ms) ensures that the threads can periodically check the done flag to exit gracefully.
-
+        All sockets (UDP and TCP) are set to non-blocking mode using fcntl:
+            fcntl(sock, F_SETFL, O_NONBLOCK);
+        In receiverThread, transmitterThread, and tcp_receiver.c, the select system call is used to wait for socket events (e.g., data available to read, socket ready to write):
+            FD_ZERO(&read_fds);
+            FD_SET(sock, &read_fds);
+            struct timeval tv = {0, 10000}; // 10ms timeout
+            int ready = select(sock + 1, &read_fds, NULL, NULL, &tv);
+    Technique:
+        select allows the program to wait for multiple socket events efficiently, avoiding busy-waiting.
+        A short timeout (10ms) ensures that the threads can periodically check the done flag to exit gracefully.
     Why It Works:
-
         Non-blocking sockets prevent the threads from hanging on I/O operations, which is critical for quick response times.
         select ensures that the program only processes sockets when they are ready, reducing CPU usage and improving responsiveness.
 
@@ -231,7 +214,6 @@ This project implements a message transmission system with three threads: two fo
         The thread pool ensures that TCP sends are handled in parallel, preventing the transmitterThread from being a bottleneck.
 
 ## Why the Solution Works
-
 The solution works effectively because it addresses all requirements while optimizing for performance and reliability:
 
     Correctness:
@@ -256,7 +238,6 @@ The solution works effectively because it addresses all requirements while optim
         Custom data structures are well-documented and reusable for future extensions.
 
 ## Techniques Used for Optimization
-
 The following techniques were critical for optimizing the system for quick response:
 
     Non-Blocking Sockets with select:
@@ -273,7 +254,6 @@ The following techniques were critical for optimizing the system for quick respo
         Condition variables prevent busy-waiting, allowing threads to wait efficiently for new messages or tasks.
 
 ## Final Code Summary
-
 The project consists of the following key files (as described in the updated README.md):
 
     Source Files:
@@ -288,11 +268,8 @@ The project consists of the following key files (as described in the updated REA
         custom_output.h: Custom output functions (print_out, print_err).
         thread_utils.h: Thread pool and synchronization utilities.
         log_error.h: Shared utility functions (logError).
-
     Build System:
-
-    CMakeLists.txt: Configures the build process for the three executables.
+        CMakeLists.txt: Configures the build process for the three executables.
 
 ## Conclusion
-
-    Tthis project successfully meets all the specified requirements while optimizing for quick response to each message. The use of non-blocking sockets, a thread pool, efficient data structures, and minimal synchronization overhead ensures that the system is both fast and reliable. The modular design, with separate applications for the sender and receiver, makes the system easy to test and extend. The project is well-suited for a Linux environment, using POSIX APIs and a CMake build system for portability and ease of use.
+Tthis project successfully meets all the specified requirements while optimizing for quick response to each message. The use of non-blocking sockets, a thread pool, efficient data structures, and minimal synchronization overhead ensures that the system is both fast and reliable. The modular design, with separate applications for the sender and receiver, makes the system easy to test and extend. The project is well-suited for a Linux environment, using POSIX APIs and a CMake build system for portability and ease of use.
